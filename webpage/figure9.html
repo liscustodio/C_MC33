@@ -1,15 +1,15 @@
 
 <html><head>
-<TITLE>Figure 6</TITLE>
+<TITLE>Figure 7</TITLE>
     
     <br>
     
-    <h1>Figure 7 </h1>
-    <p>The Figure 7 in our paper shows a problem with Chernyaev’s triangulation table and an implementation issue on Lewiner work. The figure shows the resulting meshes of a zero level-set of a 5 × 5 × 5 randomly generated piecewise- trilinear scalar field. The correct isosurface is shown in red. The green mesh represents the result of our modification on Lewiner implementation plus the subdivide method proposed in Section 6.2. The yellow mesh was obtained by our modification of Lewiner implementation, and we can observe that, even with a correct implementation of Chernyaev’s work, the resulting mesh presents a topological inconsistency, a non-manifold mesh. The blue mesh was obtained by Lewiner implementation of MC33, where the implementation issues observed on our paper generates a topological inconsistency on resulting mesh.  </p>
-
+    <h1>Figure 8 </h1>
+    <p>The Figure 8 in our paper shows an implementation issue with the height plane computation. The correct isosurface is shown in red, the result obtained with C-MC33 mesh is shown in green and the mesh resultant from the test proposed by Lewiner et al. is shown in blue. The green surface obtained with C-MC33 is homeomorphic to the red surface, as expected.</p>
+    
     <script src="./CanvasMatrix.js" type="text/javascript"></script>
     
-    <script src="./figure6.js" type="text/javascript"></script>
+    <script src="./figure7.js" type="text/javascript"></script>
     
     <script id="shader-vs" type="x-shader/x-vertex"> 
         attribute vec3 aPos;
@@ -20,7 +20,6 @@
         uniform mat4 prMatrix;
         uniform mat4 rot1Matrix;
         uniform mat4 rot2Matrix;
-        uniform mat4 rot3Matrix;
         
         varying vec4 color;
         varying float vertex_id;
@@ -32,46 +31,48 @@
         
         {
             vertex_id = vId;
+            vec3 Norm, rotNorm;
+            float i;
             
-            vec3 Norm   = aNorm;
+            Norm = -aNorm;
+            rotNorm = (mvMatrix * vec4(Norm, .0)).xyz;
+            i = max( 0., dot(rotNorm, dirDif) );
             
-            vec3 rotNorm = (mvMatrix * vec4(Norm, .0)).xyz;
-            float i = max( 0., dot(rotNorm, dirDif) );
-            
-            if(vertex_id < 59.0)
+            if(vertex_id < 40410.0)
             {
-                vec3 p = aPos*1.27;
-                //vec4 P = rot1Matrix*vec4(p, 1.0)  - vec4(-1.1, -1.5, 1.0, 0.0);
-                vec4 P = rot1Matrix*vec4(p, 1.0)  - vec4(-0.8, -0.3, 1.0, 0.0);
+                Norm = -aNorm;
+                rotNorm = (mvMatrix * vec4(Norm, .0)).xyz;
+                i = max( 0., dot(rotNorm, dirDif) );
+                
+                vec3 p = aPos * 0.006;
+                vec4 P = rot1Matrix*vec4(p, 1.0)  - vec4(-1.3, -2.0, -0.5, 0.0);
                 gl_Position = prMatrix * mvMatrix *P;
+                color = vec4(.9*i, .0*i, 0., 1.);
+            }
+            
+            if((vertex_id >= 40410.0)&&(vertex_id < 40418.0))
+            {
+                Norm = aNorm;
+                rotNorm = (mvMatrix * vec4(Norm, .0)).xyz;
+                i = max( 0., dot(rotNorm, dirDif) );
+                
+                vec3 p = aPos*0.7;
+                vec4 P = rot2Matrix*vec4(p,1.0)- vec4(-0.5, 0.7, 0.0, 0.0);
+                gl_Position = prMatrix * mvMatrix * P;
                 color = vec4(.0*i, .9*i, 0., 1.);
             }
-            
-            if((vertex_id >= 59.0)&&(vertex_id < 107.0))
+            if(vertex_id >= 40418.0)
             {
-                vec3 p = aPos*0.7;
-                vec4 P = rot2Matrix*vec4(p,1.0)- vec4(-0.3, 1.2, 0.0, 0.0);
-                //vec4 P = rot2Matrix*vec4(p,1.0)- vec4(-0.5, 0.5, 0.0, 0.0);
-                gl_Position = prMatrix * mvMatrix * P;
-                color = vec4(1.0*i, 1.0*i, 0., 1.);
-            }
-             if((vertex_id >= 107.0)&&(vertex_id < 155.0))
-            {
-                vec3 p = aPos*0.7;
-                vec4 P = rot2Matrix*vec4(p,1.0) - vec4(0.6, 2.6, 0.0, 0.0);
-                //vec4 P = rot2Matrix*vec4(p,1.0) - vec4(0.7, 2.4, 0.0, 0.0);
+                Norm = -aNorm;
+                rotNorm = (mvMatrix * vec4(Norm, .0)).xyz;
+                i = max( 0., dot(rotNorm, dirDif) );
+                
+                vec3 p = aPos*0.7; 
+                vec4 P = rot2Matrix*vec4(p,1.0) - vec4(0.5, 2.4, 0.0, 0.0);
                 gl_Position = prMatrix * mvMatrix * P;
                 color = vec4(.0*i, .9*i, 9., 1.);
             }
-                
-            if(vertex_id >= 155.0)
-            {
-                vec3 p = aPos*0.7; 
-                vec4 P = rot3Matrix*vec4(p,1.0) - vec4(-1.9, -1.5, 0.0, 0.0);
-                //vec4 P = rot2Matrix*vec4(p,1.0) - vec4(-1.1, -1.5, 1.0, 0.0);
-                gl_Position = prMatrix * mvMatrix * P;
-                color = vec4(.9*i, .0*i, 0., 1.);
-            }
+            
             
             
             i = pow( max( 0., dot(rotNorm, dirHalf) ), 60.);
@@ -138,7 +139,7 @@
             
             // mudar aqui
             var vertex_id = [];
-            for (var i = 0; i < 7887; i++)
+            for (var i = 0; i < 40425; i++)
             vertex_id.push(i);
             
             var posLoc = gl.getAttribLocation(prog, "aPos");
@@ -177,19 +178,16 @@
             // rotation matrix to fix the fist mesh position
             var Rotmatrix1 = new CanvasMatrix4();
             var RMatrixLoc1 = gl.getUniformLocation(prog,"rot1Matrix");
-            
             var Rotmatrix2 = new CanvasMatrix4();
             var RMatrixLoc2 = gl.getUniformLocation(prog,"rot2Matrix");
-            
-            var Rotmatrix3 = new CanvasMatrix4();
-            var RMatrixLoc3 = gl.getUniformLocation(prog,"rot3Matrix");
             
             gl.enable(gl.DEPTH_TEST);
             gl.depthFunc(gl.LEQUAL);
             gl.clearDepth(1.0);
             gl.clearColor(1, 1, 1, 1);
-            var xOffs = yOffs = 0,  drag  = 0;
-            var xRot = 0;
+            var drag  = 0;
+            var xOffs = yOffs = 0; 
+            var xRot = 50;
             var yRot = 0;
             var transl = -4.5;
             drawScene();
@@ -206,29 +204,22 @@
                 gl.uniformMatrix4fv( mvMatLoc, false, new Float32Array(mvMatrix.getAsArray()) );
                 
                 var rot= new CanvasMatrix4();
-                rot.rotate(55  , 1,0,0);
-                rot.rotate(-19, 0,1,0);
-                rot.rotate(-10, 0,0,1);
+                rot.rotate(-70  , 1,0,0);
+                rot.rotate(0, 0,1,0);
+                rot.rotate(-90, 0,0,1);
                 Rotmatrix1.load(rot);
                 gl.uniformMatrix4fv(RMatrixLoc1, false, new Float32Array(Rotmatrix1.getAsArray()) );
                 
                 var rot2= new CanvasMatrix4();
-                rot2.rotate(40, 1,0,0);
-                rot2.rotate(-10 , 0,1,0);
+                rot2.rotate(-10, 1,0,0);
+                rot2.rotate(0 , 0,1,0);
                 rot2.rotate(0, 0,0,1);
                 Rotmatrix2.load(rot2);
                 gl.uniformMatrix4fv(RMatrixLoc2, false, new Float32Array(Rotmatrix2.getAsArray()) );
                 
-                var rot3 = new CanvasMatrix4();
-                rot3.rotate(60, 1,0,0);
-                rot3.rotate(-10 , 0,1,0);
-                rot3.rotate(-10, 0,0,1);
-                Rotmatrix3.load(rot3);
-                gl.uniformMatrix4fv(RMatrixLoc3, false, new Float32Array(Rotmatrix3.getAsArray()) );
-                
                 
                 // mudar aqui
-                gl.drawElements(gl.TRIANGLES, 3*15750, gl.UNSIGNED_SHORT, 0);
+                gl.drawElements(gl.TRIANGLES, 3*79691, gl.UNSIGNED_SHORT, 0);
                 
                 
                 gl.flush ();
