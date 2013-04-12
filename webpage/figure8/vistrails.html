@@ -1,0 +1,111 @@
+
+<html><head><title>WebGL Visualization</title>
+<meta http-equiv="content-type" content="text/html; charset=ISO-8859-1">
+
+<script type="text/javascript" src="./vistrails.js"></script>
+<script type="text/javascript" src="./main.js"></script>
+<script type="text/javascript" src="./socket.js"></script>
+<script type="text/javascript" src="./renderingObjs.js"></script>
+<script type="text/javascript" src="./interaction.js"></script>
+
+<script id="shader-fs" type="x-shader/x-fragment">
+#ifdef GL_ES                
+  precision highp float;    
+#endif                      
+                            
+uniform bool uUseLighting;
+uniform bool uUseLocalColor;
+uniform vec4 uLocalColor;
+uniform float uLocalAlpha;
+varying vec4 vColor;            
+varying vec4 vTransformedNormal;
+varying vec4 vPosition;         
+                            
+void main(void) {           
+  vec3 uPointLightingLocation = vec3(0.0, 0.0, -1.0);                                                 
+  vec3 lightDirection = uPointLightingLocation;//normalize(uPointLightingLocation - vPosition.xyz);                            
+  float directionalLightWeighting = max(dot(normalize(vTransformedNormal.xyz), lightDirection), 0.0); 
+  vec3 lightWeighting = vec3(1.0, 1.0, 1.0) * directionalLightWeighting;                              
+                            
+  uPointLightingLocation = vec3(0.0, 0.0, 1.0);                                                       
+  lightDirection = uPointLightingLocation;//normalize(uPointLightingLocation - vPosition.xyz);                                 
+  directionalLightWeighting = max(dot(normalize(vTransformedNormal.xyz), lightDirection), 0.0);       
+  lightWeighting = max(vec3(1.0, 1.0, 1.0) * directionalLightWeighting, lightWeighting);
+
+  if (uUseLighting == false){
+    lightWeighting = vec3(1.0, 1.0, 1.0);
+  }              
+                               
+  if (uUseLocalColor == false){  
+    gl_FragColor = vec4(vColor.rgb * lightWeighting, uLocalAlpha);//vColor.a);
+  } else {                     
+    gl_FragColor = vec4(uLocalColor.rgb * lightWeighting, uLocalAlpha);//uLocalColor.a); //vColor;
+  }                         
+}                           
+</script>
+
+<script id="shader-vs" type="x-shader/x-vertex">
+attribute vec3 aVertexPosition;                
+attribute vec3 aVertexNormal;                  
+attribute vec4 aVertexColor;                   
+                                               
+uniform mat4 uMVMatrix;                        
+uniform mat4 uPMatrix;                         
+uniform mat4 uNMatrix;                         
+                                               
+varying vec4 vColor;                           
+varying vec4 vTransformedNormal;               
+varying vec4 vPosition;                        
+                                               
+void main(void) {                              
+  vPosition = uMVMatrix * vec4(aVertexPosition, 1.0);      
+  gl_Position = uPMatrix * vPosition;                      
+  vTransformedNormal = uNMatrix * vec4(aVertexNormal, 1.0);
+  vColor =  aVertexColor;                      
+}                                              
+</script>
+
+<script type="text/javascript">
+  //GETTING ALL THE GET PARAMETERS
+  global_wfid = "-1";
+  global_width = "800";
+  global_height = "600";
+  global_vtid = "193";
+  var vistrails = new Vistrails();
+</script>
+
+<style> 
+#popup { 
+  position: absolute; 
+  top: 300px; 
+  left:225px; 
+  visibility:hidden;
+  z-index: 100; 
+  background-color: white;
+  border: 1px dotted cyan;
+}
+</style> 
+
+</head>
+<body onload="vistrails.start()">
+
+<div id="popup" onMouseOver="ui.showPopup('');" onMouseOut="ui.hidePopup();"></div>
+<table border="0">
+<tr>
+  <!-- PROPERTIES -->
+  <td VALIGN=TOP>
+    <div id='sessionWidget' style="display: block;"></div>
+    <div id='serverParams' stype="display: block;"></div>
+    <div id='suggestedParams' stype="display: block;"></div>
+    <div id='clientParams' stype="display: block;"></div>
+    <div id='cacheParams' stype="display: none;"></div>
+  </td>
+  <!-- CANVAS -->
+  <td VALIGN=TOP>
+    <div id="progressBar"></div>
+    <div id="vistrailsView"></div>
+  </td>
+</tr>
+</table>
+</body>
+</html>
