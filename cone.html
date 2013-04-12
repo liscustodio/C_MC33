@@ -1,0 +1,183 @@
+
+<html><head>
+<TITLE>cone</TITLE>
+
+<script src="./CanvasMatrix.js" type="text/javascript"></script>
+
+<script id="shader-vs" type="x-shader/x-vertex"> 
+  attribute vec3 aPos;
+  attribute vec3 aNorm;
+  uniform mat4 mvMatrix;
+  uniform mat4 prMatrix;
+  varying vec4 color;
+  const vec3 dirDif = vec3(0., 0., 1.);
+  const vec3 dirHalf = vec3(-.4034, .259, .8776);
+void main(void) {
+   gl_Position = prMatrix * mvMatrix * vec4(aPos, 1.);
+   vec3 rotNorm = (mvMatrix * vec4(aNorm, .0)).xyz;
+   float i = max( 0., dot(rotNorm, dirDif) );
+   color = vec4(.9*i, .5*i, 0., 1.);
+   i = pow( max( 0., dot(rotNorm, dirHalf) ), 120.);
+   color += vec4(i, i, i, 0.);
+}
+</script> 
+ 
+<script id="shader-fs" type="x-shader/x-fragment"> 
+#ifdef GL_ES
+precision highp float;
+#endif
+varying vec4 color;
+
+void main(void) {
+   gl_FragColor = color;
+}
+</script> 
+ 
+<script type="text/javascript"> 
+
+function getShader ( gl, id ){
+   var shaderScript = document.getElementById ( id );
+   var str = "";
+   var k = shaderScript.firstChild;
+   while ( k ){
+     if ( k.nodeType == 3 ) str += k.textContent;
+     k = k.nextSibling;
+   }
+   var shader;
+   if ( shaderScript.type == "x-shader/x-fragment" )
+           shader = gl.createShader ( gl.FRAGMENT_SHADER );
+   else if ( shaderScript.type == "x-shader/x-vertex" )
+           shader = gl.createShader(gl.VERTEX_SHADER);
+   else return null;
+   gl.shaderSource(shader, str);
+   gl.compileShader(shader);
+   if (gl.getShaderParameter(shader, gl.COMPILE_STATUS) == 0)
+      alert(id +"\n"+ gl.getShaderInfoLog(shader));
+   return shader;
+}
+
+var gl, canvas, h = 1, r1 = .5, r2 = .2, nPhi = 500;
+
+function webGLStart() {
+   canvas = document.getElementById("canvas");
+   var size = Math.min(window.innerWidth, window.innerHeight) - 10;
+   canvas.width =  size;   canvas.height = size;
+   if (!window.WebGLRenderingContext){
+     alert("Your browser does not support WebGL. See http://get.webgl.org");
+     return;}
+   try { gl = canvas.getContext("experimental-webgl");
+   } catch(e) {}
+   if ( !gl ) {alert("Can't get WebGL"); return;}
+   gl.viewport(0, 0, size, size);
+
+   var prog  = gl.createProgram();
+   gl.attachShader(prog, getShader( gl, "shader-vs" ));
+   gl.attachShader(prog, getShader( gl, "shader-fs" ));
+   gl.linkProgram(prog);
+   gl.useProgram(prog);
+
+   var pt = [], nt = [];
+   var Phi = 0, dPhi = 2*Math.PI / (nPhi-1),
+     Nx = r1 - r2, Ny = h, N = Math.sqrt(Nx*Nx + Ny*Ny);
+   Nx /= N; Ny /= N;
+   for (var i = 0; i < nPhi; i++ ){
+      var cosPhi = Math.cos( Phi );
+      var sinPhi = Math.sin( Phi );
+      var cosPhi2 = Math.cos( Phi + dPhi/2 );
+      var sinPhi2 = Math.sin( Phi + dPhi/2 );
+      pt.push ( -h/2, cosPhi * r1, sinPhi * r1 );   // points
+      nt.push ( Nx, Ny*cosPhi, Ny*sinPhi );         // normals
+      pt.push ( h/2, cosPhi2 * r2, sinPhi2 * r2 );  // points
+      nt.push ( Nx, Ny*cosPhi2, Ny*sinPhi2 );       // normals
+      Phi   += dPhi;
+   }
+   var posLoc = gl.getAttribLocation(prog, "aPos");
+   gl.enableVertexAttribArray( posLoc );
+   gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(pt), gl.STATIC_DRAW);
+   gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
+
+   var normLoc = gl.getAttribLocation(prog, "aNorm");
+   gl.enableVertexAttribArray( normLoc );
+   gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(nt), gl.STATIC_DRAW);
+   gl.vertexAttribPointer(normLoc, 3, gl.FLOAT, false, 0, 0);
+
+   var prMatrix = new CanvasMatrix4();
+   prMatrix.perspective(45, 1, .1, 100);
+   gl.uniformMatrix4fv( gl.getUniformLocation(prog,"prMatrix"),
+      false, new Float32Array(prMatrix.getAsArray()) );
+   var mvMatrix = new CanvasMatrix4();
+   var rotMat = new CanvasMatrix4();
+   rotMat.makeIdentity();
+   rotMat.rotate(-40, 0,1,0);
+   var mvMatLoc = gl.getUniformLocation(prog,"mvMatrix");
+
+   gl.enable(gl.DEPTH_TEST);
+   gl.depthFunc(gl.LEQUAL);
+   gl.clearDepth(1.0);
+   gl.clearColor(0, 0, .5, 1);
+   var xOffs = yOffs = 0,  drag  = 0;
+   var xRot = yRot = 0;
+   var transl = -1.5;
+   drawScene();
+
+  function drawScene(){
+    rotMat.rotate(xRot/5, 1,0,0);  rotMat.rotate(yRot/5, 0,1,0);
+    yRot = 0;  xRot = 0;
+    mvMatrix.load( rotMat );
+    mvMatrix.translate(0, 0, transl);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    gl.uniformMatrix4fv( mvMatLoc, false,
+      new Float32Array(mvMatrix.getAsArray()) );
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 2*nPhi);
+    gl.flush ();
+  }
+
+  canvas.resize = function (){
+    var size = Math.min(window.innerWidth, window.innerHeight) - 10;
+    canvas.width =  size;   canvas.height = size;
+    gl.viewport(0, 0, size, size);
+    drawScene();
+  }
+  canvas.onmousedown = function ( ev ){
+     drag  = 1;
+     xOffs = ev.clientX;  yOffs = ev.clientY;
+  }
+  canvas.onmouseup = function ( ev ){
+     drag  = 0;
+     xOffs = ev.clientX;  yOffs = ev.clientY;
+  }
+  canvas.onmousemove = function ( ev ){
+     if ( drag == 0 ) return;
+     if ( ev.shiftKey ) {
+        transl *= 1 + (ev.clientY - yOffs)/1000;
+        yRot = - xOffs + ev.clientX; }
+     else {
+        yRot = - xOffs + ev.clientX;  xRot = - yOffs + ev.clientY; }
+     xOffs = ev.clientX;  yOffs = ev.clientY;
+     drawScene();
+  }
+  var wheelHandler = function(ev) {
+    var del = 1.1;
+    if (ev.shiftKey) del = 1.01;
+    var ds = ((ev.detail || ev.wheelDelta) > 0) ? del : (1 / del);
+    transl *= ds;
+    drawScene();
+    ev.preventDefault();
+  };
+  canvas.addEventListener('DOMMouseScroll', wheelHandler, false);
+  canvas.addEventListener('mousewheel', wheelHandler, false);
+}
+</script> 
+</head>
+<body onload="webGLStart();" onresize="canvas.resize();"> 
+   <canvas id="canvas" width="500" height="500"></canvas> 
+
+<br>Drag mouse to rotate model. Hold <i>shift</i> key or use mouse wheel
+to zoom it. Canvas is matched to the browser window.
+
+<hr><a href="contents.htm">Contents</a>
+&nbsp; &nbsp; <i>updated</i> 31 Dec 2010
+
+</body></html>
